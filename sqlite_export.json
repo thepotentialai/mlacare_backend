@@ -1,0 +1,229 @@
+[
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$b8Mv2YWGAWOxaYAEsOin5G$C2ZmlX0zsteE5DKBlGVAeUHnM738leQiNMJQSvKYIaE=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "admin@gmail.com",
+    "phone": null,
+    "role": "admin",
+    "is_active": true,
+    "is_verified": true,
+    "is_staff": true,
+    "date_joined": "2026-03-30T11:24:35.994Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$kKVsaq5Zf9qBW4r79XS1Fp$sYhJYUTIQ+KBigY1+XgTJeM5Z3HLJ2te0q+Mu3vqkTE=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "sekuqeb@mailinator.com",
+    "phone": "+1 (344) 185-6295",
+    "role": "patient",
+    "is_active": true,
+    "is_verified": true,
+    "is_staff": false,
+    "date_joined": "2026-03-30T11:42:55.431Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.otpverification",
+  "pk": 1,
+  "fields": {
+    "user": [
+      "sekuqeb@mailinator.com"
+    ],
+    "code": "555640",
+    "created_at": "2026-03-30T11:42:55.445Z",
+    "expires_at": "2026-03-30T11:52:55.444Z",
+    "is_used": true
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 1,
+  "fields": {
+    "name": "Delmas",
+    "city": "Port-au-Prince"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 2,
+  "fields": {
+    "name": "Carrefour",
+    "city": "Port-au-Prince"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 3,
+  "fields": {
+    "name": "Pétion-Ville",
+    "city": "Pétion-Ville"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 4,
+  "fields": {
+    "name": "Tabarre",
+    "city": "Port-au-Prince"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 5,
+  "fields": {
+    "name": "Croix-des-Bouquets",
+    "city": "Croix-des-Bouquets"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 6,
+  "fields": {
+    "name": "Cité Soleil",
+    "city": "Port-au-Prince"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 7,
+  "fields": {
+    "name": "Jacmel Centre",
+    "city": "Jacmel"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 8,
+  "fields": {
+    "name": "Les Cayes Centre",
+    "city": "Les Cayes"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 9,
+  "fields": {
+    "name": "Cap-Haïtien Centre",
+    "city": "Cap-Haïtien"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 10,
+  "fields": {
+    "name": "Gonaïves Centre",
+    "city": "Gonaïves"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 11,
+  "fields": {
+    "name": "Saint-Marc Centre",
+    "city": "Saint-Marc"
+  }
+},
+{
+  "model": "agents.residencezone",
+  "pk": 12,
+  "fields": {
+    "name": "Hinche Centre",
+    "city": "Hinche"
+  }
+},
+{
+  "model": "patients.plan",
+  "pk": 1,
+  "fields": {
+    "name": "Silver",
+    "description": "Suivi de base a domicile avec accompagnement mensuel.",
+    "price": "2500.00",
+    "visits_per_month": 1,
+    "features": [
+      "1 visite par mois",
+      "Support WhatsApp",
+      "Rappel des medicaments"
+    ],
+    "is_active": true,
+    "created_at": "2026-03-30T11:41:39.457Z"
+  }
+},
+{
+  "model": "patients.plan",
+  "pk": 2,
+  "fields": {
+    "name": "Gold",
+    "description": "Suivi renforce avec visites plus frequentes.",
+    "price": "4500.00",
+    "visits_per_month": 2,
+    "features": [
+      "2 visites par mois",
+      "Support prioritaire",
+      "Suivi des signes vitaux"
+    ],
+    "is_active": true,
+    "created_at": "2026-03-30T11:41:39.461Z"
+  }
+},
+{
+  "model": "patients.plan",
+  "pk": 3,
+  "fields": {
+    "name": "Platinum",
+    "description": "Accompagnement premium pour suivi intensif.",
+    "price": "7000.00",
+    "visits_per_month": 4,
+    "features": [
+      "4 visites par mois",
+      "Coordination medicale",
+      "Rapport detaille mensuel"
+    ],
+    "is_active": true,
+    "created_at": "2026-03-30T11:41:39.463Z"
+  }
+},
+{
+  "model": "patients.patientprofile",
+  "pk": 1,
+  "fields": {
+    "user": [
+      "sekuqeb@mailinator.com"
+    ],
+    "full_name": "Brendan Cervantes",
+    "date_of_birth": "2023-03-27",
+    "gender": "other",
+    "avatar": "",
+    "address": "Itaque perferendis i",
+    "city": "Les Cayes",
+    "zone": 1,
+    "emergency_contact_name": "",
+    "emergency_contact_phone": "",
+    "health_notes": "",
+    "created_at": "2026-03-30T11:42:55.443Z",
+    "updated_at": "2026-03-30T11:42:55.443Z"
+  }
+},
+{
+  "model": "patients.subscription",
+  "pk": 1,
+  "fields": {
+    "patient": 1,
+    "plan": 1,
+    "start_date": "2026-03-30",
+    "end_date": "2026-04-29",
+    "status": "active",
+    "created_at": "2026-03-30T11:43:11.448Z"
+  }
+}
+]
