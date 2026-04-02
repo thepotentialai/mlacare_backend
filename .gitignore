@@ -1,1 +1,52 @@
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Type check / lint cache
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# Logs
+*.log
+logs/
+
+# Django / app runtime files
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
