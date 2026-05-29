@@ -37,7 +37,10 @@ class PatientProfileSerializer(serializers.ModelSerializer):
             'id', 'email', 'phone', 'full_name', 'date_of_birth', 'gender', 'avatar',
             'address', 'city', 'zone', 'zone_name',
             'emergency_contact_name', 'emergency_contact_phone',
-            'health_notes', 'current_subscription',
+            'health_notes',
+            'chronic_diseases', 'known_allergies', 'current_medications',
+            'surgical_history', 'family_history', 'lifestyle_habits', 'other_medical_info',
+            'current_subscription',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'email', 'phone', 'created_at', 'updated_at']

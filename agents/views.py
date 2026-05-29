@@ -5,8 +5,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import IsAgent
-from patients.models import PatientProfile
-from patients.serializers import PatientProfileSerializer
 
 from .models import AgentDocument, AgentProfile, AgentSchedule, ResidenceZone
 from .serializers import (
@@ -23,9 +21,12 @@ class AgentProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return get_object_or_404(
-            AgentProfile.objects.select_related('user', 'residence_zone').prefetch_related(
+            AgentProfile.objects.select_related(
+                'user', 'residence_zone', 'pending_residence_zone'
+            ).prefetch_related(
                 'schedules',
                 'coverage_zones',
+                'pending_coverage_zones',
                 'documents',
             ),
             user=self.request.user,
@@ -54,19 +55,6 @@ class ResidenceZoneListView(generics.ListAPIView):
     serializer_class = ResidenceZoneSerializer
     permission_classes = [AllowAny]
     queryset = ResidenceZone.objects.all()
-
-
-class AgentAssignedPatientsView(generics.ListAPIView):
-    serializer_class = PatientProfileSerializer
-    permission_classes = [IsAuthenticated, IsAgent]
-
-    def get_queryset(self):
-        return (
-            PatientProfile.objects.select_related('user', 'zone')
-            .prefetch_related('subscriptions__plan')
-            .filter(assigned_agent=self.request.user.agent_profile)
-            .order_by('-updated_at')
-        )
 
 
 class AgentScheduleListCreateView(generics.ListCreateAPIView):

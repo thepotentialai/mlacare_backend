@@ -8,6 +8,21 @@ urlpatterns = [
     path('agents/<int:pk>/', views.AdminAgentDetailView.as_view(), name='admin-agent-detail'),
     path('agents/<int:pk>/approve/', views.AdminApproveAgentView.as_view(), name='admin-agent-approve'),
     path('agents/<int:pk>/reject/', views.AdminRejectAgentView.as_view(), name='admin-agent-reject'),
+    path(
+        'agents/<int:pk>/approve-zones/',
+        views.AdminApproveAgentZonesView.as_view(),
+        name='admin-agent-approve-zones',
+    ),
+    path(
+        'agents/<int:pk>/reject-zones/',
+        views.AdminRejectAgentZonesView.as_view(),
+        name='admin-agent-reject-zones',
+    ),
+    path(
+        'agents/<int:pk>/review-zones/',
+        views.AdminReviewAgentZonesView.as_view(),
+        name='admin-agent-review-zones',
+    ),
     path('patients/', views.AdminPatientListView.as_view(), name='admin-patient-list'),
     path('patients/<int:pk>/', views.AdminPatientDetailView.as_view(), name='admin-patient-detail'),
     path('visits/', views.AdminVisitListView.as_view(), name='admin-visit-list'),

@@ -41,6 +41,64 @@ class Visit(models.Model):
         return f"Visite #{self.id} — {self.patient.full_name} ({self.status})"
 
 
+class VisitPreScreening(models.Model):
+    """Questionnaire court avant la saisie des signes vitaux (à jeun, douleur, traitements)."""
+
+    FASTING_YES = 'yes'
+    FASTING_NO = 'no'
+    FASTING_UNKNOWN = 'unknown'
+    FASTING_CHOICES = [
+        (FASTING_YES, 'À jeun'),
+        (FASTING_NO, "Pas à jeun"),
+        (FASTING_UNKNOWN, 'Ne sait pas'),
+    ]
+
+    MED_NA = 'na'
+    MED_YES = 'yes'
+    MED_NO = 'no'
+    MED_PARTIAL = 'partial'
+    MEDICATIONS_TAKEN_CHOICES = [
+        (MED_NA, 'Sans objet'),
+        (MED_YES, 'Oui, pris comme prévu'),
+        (MED_NO, 'Non'),
+        (MED_PARTIAL, 'Partiellement'),
+    ]
+
+    visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name='pre_screening')
+    fasting_status = models.CharField(max_length=10, choices=FASTING_CHOICES)
+    has_pain = models.BooleanField()
+    pain_description = models.TextField(blank=True)
+    takes_medications = models.BooleanField()
+    medications_taken_status = models.CharField(max_length=10, choices=MEDICATIONS_TAKEN_CHOICES)
+    medication_names = models.TextField(blank=True)
+    extra_notes = models.TextField(blank=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'visit_pre_screenings'
+
+    def __str__(self):
+        return f"Questionnaire pré-visite — Visite #{self.visit_id}"
+
+    def is_complete(self) -> bool:
+        if not self.fasting_status:
+            return False
+        if self.has_pain and not (self.pain_description or '').strip():
+            return False
+        if self.takes_medications:
+            if self.medications_taken_status not in (
+                self.MED_YES,
+                self.MED_NO,
+                self.MED_PARTIAL,
+            ):
+                return False
+            if not (self.medication_names or '').strip():
+                return False
+        elif self.medications_taken_status != self.MED_NA:
+            return False
+        return True
+
+
 class VitalSigns(models.Model):
     visit = models.OneToOneField(Visit, on_delete=models.CASCADE, related_name='vital_signs')
     blood_pressure_sys = models.IntegerField(null=True, blank=True, verbose_name='Tension systolique (mmHg)')

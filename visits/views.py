@@ -10,8 +10,14 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsAgent, IsPatient
 
-from .models import HealthReport, ReportAttachment, Visit, VitalSigns, VisitReview
-from .serializers import HealthReportSerializer, VisitReviewSerializer, VisitSerializer, VitalSignsSerializer
+from .models import HealthReport, ReportAttachment, Visit, VisitPreScreening, VitalSigns, VisitReview
+from .serializers import (
+    HealthReportSerializer,
+    VisitPreScreeningSerializer,
+    VisitReviewSerializer,
+    VisitSerializer,
+    VitalSignsSerializer,
+)
 
 
 class VisitListCreateView(generics.ListCreateAPIView):
@@ -21,10 +27,14 @@ class VisitListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'patient':
-            return Visit.objects.filter(patient=user.patient_profile).select_related('agent', 'vital_signs', 'review')
+            return Visit.objects.filter(patient=user.patient_profile).select_related(
+                'agent', 'vital_signs', 'pre_screening', 'review'
+            )
         if user.role == 'agent':
-            return Visit.objects.filter(agent=user.agent_profile).select_related('patient', 'vital_signs', 'review')
-        return Visit.objects.select_related('patient', 'agent', 'vital_signs', 'review').all()
+            return Visit.objects.filter(agent=user.agent_profile).select_related(
+                'patient', 'vital_signs', 'pre_screening', 'review'
+            )
+        return Visit.objects.select_related('patient', 'agent', 'vital_signs', 'pre_screening', 'review').all()
 
     def perform_create(self, serializer):
         serializer.save(patient=self.request.user.patient_profile)
@@ -68,10 +78,14 @@ class VisitDetailView(generics.RetrieveUpdateAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'patient':
-            return Visit.objects.filter(patient=user.patient_profile).select_related('review')
+            return Visit.objects.filter(patient=user.patient_profile).select_related(
+                'review', 'pre_screening', 'vital_signs'
+            )
         if user.role == 'agent':
-            return Visit.objects.filter(agent=user.agent_profile).select_related('review')
-        return Visit.objects.select_related('review').all()
+            return Visit.objects.filter(agent=user.agent_profile).select_related(
+                'review', 'pre_screening', 'vital_signs'
+            )
+        return Visit.objects.select_related('review', 'pre_screening', 'vital_signs').all()
 
     def partial_update(self, request, *args, **kwargs):
         visit = self.get_object()
@@ -187,6 +201,29 @@ class VisitDetailView(generics.RetrieveUpdateAPIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
+                try:
+                    pre = visit.pre_screening
+                except VisitPreScreening.DoesNotExist:
+                    return Response(
+                        {
+                            'error': (
+                                "Impossible de terminer la visite : le questionnaire pré-visite "
+                                "doit être renseigné avant la clôture."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if not pre.is_complete():
+                    return Response(
+                        {
+                            'error': (
+                                "Impossible de terminer la visite : le questionnaire pré-visite "
+                                "est incomplet ou incohérent."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
         kwargs['partial'] = True
         response = super().update(request, *args, **kwargs)
 
@@ -219,6 +256,29 @@ class VitalSignsView(APIView):
         except Visit.DoesNotExist:
             return Response({'error': 'Visite introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
+        if visit.status == 'in_progress':
+            try:
+                pre = visit.pre_screening
+            except VisitPreScreening.DoesNotExist:
+                return Response(
+                    {
+                        'error': (
+                            "Enregistrez d'abord le questionnaire pré-visite avant les signes vitaux."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not pre.is_complete():
+                return Response(
+                    {
+                        'error': (
+                            "Le questionnaire pré-visite est incomplet : corrigez-le avant "
+                            "d'enregistrer les constantes."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         serializer = VitalSignsSerializer(data=request.data)
         if serializer.is_valid():
             VitalSigns.objects.update_or_create(
@@ -226,6 +286,61 @@ class VitalSignsView(APIView):
                 defaults=serializer.validated_data,
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _visit_for_pre_screening_read(user, visit_id):
+    if user.role == 'patient':
+        return Visit.objects.filter(id=visit_id, patient=user.patient_profile).first()
+    if user.role == 'agent':
+        return Visit.objects.filter(id=visit_id, agent=user.agent_profile).first()
+    if user.role == 'admin' or user.is_staff:
+        return Visit.objects.filter(id=visit_id).first()
+    return None
+
+
+class VisitPreScreeningView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, visit_id):
+        visit = _visit_for_pre_screening_read(request.user, visit_id)
+        if not visit:
+            return Response({'error': 'Visite introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            screening = visit.pre_screening
+        except VisitPreScreening.DoesNotExist:
+            return Response(
+                {'error': 'Aucun questionnaire pré-visite pour cette visite.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(VisitPreScreeningSerializer(screening).data)
+
+    def post(self, request, visit_id):
+        if request.user.role != 'agent':
+            return Response(
+                {'error': 'Seuls les agents peuvent enregistrer le questionnaire.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            visit = Visit.objects.get(id=visit_id, agent=request.user.agent_profile)
+        except Visit.DoesNotExist:
+            return Response({'error': 'Visite introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        if visit.status != 'in_progress':
+            return Response(
+                {
+                    'error': (
+                        "Le questionnaire ne peut être enregistré que lorsque la visite est en cours."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = VisitPreScreeningSerializer(data=request.data)
+        if serializer.is_valid():
+            obj, _created = VisitPreScreening.objects.update_or_create(
+                visit=visit,
+                defaults=serializer.validated_data,
+            )
+            return Response(VisitPreScreeningSerializer(obj).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

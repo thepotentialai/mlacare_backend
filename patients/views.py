@@ -1,7 +1,6 @@
-from datetime import date, timedelta
 import logging
+from datetime import date, timedelta
 
-from kombu.exceptions import OperationalError
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -53,41 +52,15 @@ class SubscriptionView(APIView):
                 status='active',
             )
 
-            # ── Trigger patient-agent matching ──────────────────────────────
-            # Only start matching if patient has no assigned agent yet
-            if patient.assigned_agent_id is None:
-                from matching.tasks import start_patient_matching
-                try:
-                    start_patient_matching.delay(patient.id)
-                except OperationalError:
-                    # Keep subscription creation successful if broker is temporarily unavailable.
-                    logger.exception(
-                        "Celery broker unreachable while starting patient matching for patient %s",
-                        patient.id,
-                    )
-                except Exception:
-                    logger.exception(
-                        "Unexpected error while starting patient matching for patient %s",
-                        patient.id,
-                    )
-
-                # In-app notice: assignment can take up to <setting> to complete
-                from admin_api.models import AdminSetting
-                from notifications.models import Notification
-                try:
-                    duration = AdminSetting.objects.get(key='assignment_notice_duration').value
-                except AdminSetting.DoesNotExist:
-                    duration = "24 heures"
-                Notification.objects.create(
-                    user=request.user,
-                    title="Assignation d'un agent en cours",
-                    message=(
-                        f"Votre demande d'assignation est en cours de traitement. "
-                        f"Cela prend généralement {duration}."
-                    ),
-                    type='system',
+            from visits.services import generate_visits_for_subscription
+            try:
+                generate_visits_for_subscription(sub)
+            except Exception:
+                logger.exception(
+                    "Erreur lors de la génération des visites pour l'abonnement #%s (patient %s).",
+                    sub.id,
+                    patient.id,
                 )
-            # ───────────────────────────────────────────────────────────────
 
             return Response(SubscriptionSerializer(sub).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

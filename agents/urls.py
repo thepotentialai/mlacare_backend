@@ -4,7 +4,6 @@ from . import views
 
 urlpatterns = [
     path('profile/', views.AgentProfileView.as_view(), name='agent-profile'),
-    path('patients/', views.AgentAssignedPatientsView.as_view(), name='agent-patients'),
     path('availability/', views.AgentAvailabilityView.as_view(), name='agent-availability'),
     path('documents/', views.AgentDocumentView.as_view(), name='agent-documents'),
     path('schedules/', views.AgentScheduleListCreateView.as_view(), name='agent-schedule-list'),

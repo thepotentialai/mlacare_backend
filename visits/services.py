@@ -1,6 +1,7 @@
 import logging
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Count, Q
 
 from agents.models import AgentProfile
@@ -8,46 +9,61 @@ from agents.models import AgentProfile
 logger = logging.getLogger(__name__)
 
 DEFAULT_VISIT_TIME = '09:00:00'
+ACTIVE_VISIT_STATUSES = ['pending', 'confirmed', 'in_progress']
 
 
 def assign_agent_to_visit(visit):
     """
-    Assigne un agent approuvé, disponible, dont la zone de couverture inclut
-    la zone de résidence du patient. En cas d'égalité, privilégie la charge la plus faible.
-    Si le patient a déjà un agent assigné, on l'utilise directement.
+    Assigne dynamiquement un agent disponible à une visite non assignée.
+
+    Règles:
+    - ne jamais réassigner une visite déjà assignée
+    - priorité aux agents de la zone du patient
+    - fallback global sur agents disponibles si la zone n'a aucun candidat
+    - choix de l'agent avec charge active minimale
+    - comportement idempotent et sûr en concurrence
     """
-    patient = visit.patient
+    if visit.agent_id:
+        return None
 
-    # Prefer the already-assigned agent for this patient
-    if patient.assigned_agent_id:
-        visit.agent = patient.assigned_agent
-        visit.save(update_fields=['agent'])
-        return
+    with transaction.atomic():
+        locked_visit = (
+            type(visit).objects.select_for_update()
+            .get(pk=visit.pk)
+        )
+        if locked_visit.agent_id:
+            return None
 
-    zone = patient.zone
-    if not zone:
-        return
-
-    candidates = (
-        AgentProfile.objects.filter(
+        patient_zone = locked_visit.patient.zone
+        base_candidates = AgentProfile.objects.filter(
             approval_status='approved',
             is_available=True,
-            coverage_zones=zone,
-        )
-        .annotate(
+        ).annotate(
             active_visits=Count(
                 'visits',
-                filter=Q(
-                    visits__status__in=['pending', 'confirmed', 'in_progress'],
-                ),
+                filter=Q(visits__status__in=ACTIVE_VISIT_STATUSES),
             ),
         )
-        .order_by('active_visits', 'id')
-    )
-    agent = candidates.first()
-    if agent:
-        visit.agent = agent
-        visit.save(update_fields=['agent'])
+
+        agent = None
+        if patient_zone:
+            agent = (
+                base_candidates.filter(coverage_zones=patient_zone)
+                .order_by('active_visits', 'id')
+                .first()
+            )
+
+        if agent is None:
+            agent = base_candidates.order_by('active_visits', 'id').first()
+
+        if agent is None:
+            return None
+
+        updated = type(visit).objects.filter(pk=locked_visit.pk, agent__isnull=True).update(agent=agent)
+        if updated:
+            visit.agent_id = agent.id
+            return agent
+        return None
 
 
 def generate_visits_for_subscription(subscription):
@@ -57,7 +73,7 @@ def generate_visits_for_subscription(subscription):
     - Lit plan.visits_per_month et la période start_date / end_date.
     - Répartit N visites uniformément sur la période.
     - Crée chaque Visit avec status='pending', subscription=sub, visit_number=i.
-    - Assigne l'agent du patient directement (via assign_agent_to_visit).
+    - Laisse les visites sans agent (assignation just-in-time via commande périodique).
     - Ignore si des visites liées à cet abonnement existent déjà (idempotent).
     """
     from .models import Visit  # local import to avoid circular deps
@@ -112,10 +128,3 @@ def generate_visits_for_subscription(subscription):
         plan.name,
     )
 
-    # Assign agent to each created visit
-    created_visits = Visit.objects.filter(subscription=subscription).order_by('visit_number')
-    for visit in created_visits:
-        try:
-            assign_agent_to_visit(visit)
-        except Exception:
-            logger.exception("Erreur lors de l'assignation de l'agent à la visite #%s.", visit.id)

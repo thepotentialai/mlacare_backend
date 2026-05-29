@@ -57,6 +57,12 @@ class AgentProfile(models.Model):
     avatar = models.ImageField(upload_to='agents/avatars/', null=True, blank=True)
     profession = models.CharField(max_length=40, choices=PROFESSION_CHOICES, default='other')
     specialization = models.CharField(max_length=200, blank=True)
+    nif = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text="Numéro d'identification fiscale (optionnel).",
+    )
     experience_years = models.IntegerField(default=0)
     approval_status = models.CharField(max_length=20, choices=APPROVAL_CHOICES, default='pending')
     is_available = models.BooleanField(default=False)
@@ -71,7 +77,21 @@ class AgentProfile(models.Model):
         ResidenceZone,
         blank=True,
         related_name='covering_agents',
-        help_text="Zones de résidence que l'agent accepte de couvrir (assignation patient).",
+        help_text="Zones approuvées pour l'assignation (matching).",
+    )
+    pending_residence_zone = models.ForeignKey(
+        ResidenceZone,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pending_residence_agents',
+        help_text="Zone de résidence demandée par l'agent (en attente validation admin).",
+    )
+    pending_coverage_zones = models.ManyToManyField(
+        ResidenceZone,
+        blank=True,
+        related_name='pending_coverage_by_agents',
+        help_text="Zones de couverture demandées (en attente validation admin).",
     )
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

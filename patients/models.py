@@ -41,16 +41,17 @@ class PatientProfile(models.Model):
         blank=True,
         related_name='patients',
     )
-    assigned_agent = models.ForeignKey(
-        'agents.AgentProfile',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='assigned_patients',
-    )
     emergency_contact_name = models.CharField(max_length=200, blank=True)
     emergency_contact_phone = models.CharField(max_length=20, blank=True)
     health_notes = models.TextField(blank=True)
+    # ─── Structured health fields ────────────────────────────────────────────
+    chronic_diseases = models.TextField(blank=True)
+    known_allergies = models.TextField(blank=True)
+    current_medications = models.TextField(blank=True)
+    surgical_history = models.TextField(blank=True)
+    family_history = models.TextField(blank=True)
+    lifestyle_habits = models.TextField(blank=True)
+    other_medical_info = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

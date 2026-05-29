@@ -7,6 +7,7 @@ urlpatterns = [
     path('plan-progress/', views.PlanProgressView.as_view(), name='visit-plan-progress'),
     path('<int:pk>/', views.VisitDetailView.as_view(), name='visit-detail'),
     path('<int:visit_id>/vitals/', views.VitalSignsView.as_view(), name='visit-vitals'),
+    path('<int:visit_id>/pre-screening/', views.VisitPreScreeningView.as_view(), name='visit-pre-screening'),
     path('<int:visit_id>/review/', views.VisitReviewView.as_view(), name='visit-review'),
     path('health-reports/', views.HealthReportListCreateView.as_view(), name='health-report-list'),
     path('health-reports/<int:pk>/', views.HealthReportDetailView.as_view(), name='health-report-detail'),

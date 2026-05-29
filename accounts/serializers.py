@@ -16,6 +16,8 @@ class RegisterPatientSerializer(serializers.Serializer):
     address = serializers.CharField(required=False, allow_blank=True)
     city = serializers.CharField(max_length=100, required=False, allow_blank=True)
     zone_id = serializers.IntegerField(required=False, allow_null=True)
+    health_notes = serializers.CharField(required=False, allow_blank=True, default='')
+    plan_id = serializers.IntegerField(required=False, allow_null=True)
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -35,11 +37,41 @@ class RegisterPatientSerializer(serializers.Serializer):
             'address': validated_data.pop('address', ''),
             'city': validated_data.pop('city', ''),
             'zone_id': validated_data.pop('zone_id', None),
+            'health_notes': validated_data.pop('health_notes', '') or '',
         }
+        plan_id = validated_data.pop('plan_id', None)
         user = User.objects.create_user(role='patient', **validated_data)
 
-        from patients.models import PatientProfile
-        PatientProfile.objects.create(user=user, **profile_data)
+        from patients.models import PatientProfile, Plan, Subscription
+        from visits.services import generate_visits_for_subscription
+
+        with transaction.atomic():
+            patient = PatientProfile.objects.create(user=user, **profile_data)
+
+            selected_plan = None
+            if plan_id is not None:
+                selected_plan = Plan.objects.filter(id=plan_id, is_active=True).first()
+                if selected_plan is None:
+                    raise serializers.ValidationError(
+                        {'plan_id': "La formule sélectionnée est invalide ou inactive."},
+                    )
+            else:
+                selected_plan = Plan.objects.filter(is_active=True).order_by('price', 'id').first()
+
+            if selected_plan is None:
+                raise serializers.ValidationError(
+                    {'plan_id': "Aucune formule active n'est disponible pour créer des visites."},
+                )
+
+            from datetime import date, timedelta
+            subscription = Subscription.objects.create(
+                patient=patient,
+                plan=selected_plan,
+                start_date=date.today(),
+                end_date=date.today() + timedelta(days=30),
+                status='active',
+            )
+            generate_visits_for_subscription(subscription)
         return user
 
 
@@ -50,6 +82,7 @@ class RegisterAgentSerializer(serializers.Serializer):
     full_name = serializers.CharField(max_length=200)
     profession = serializers.ChoiceField(choices=AgentProfile.PROFESSION_CHOICES)
     specialization = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    nif = serializers.CharField(max_length=64, required=False, allow_blank=True)
     experience_years = serializers.IntegerField(min_value=0)
     residence_zone_id = serializers.IntegerField(required=False, allow_null=True)
     # Backward-compatible payload (old "zone de service" list)
@@ -68,10 +101,12 @@ class RegisterAgentSerializer(serializers.Serializer):
     def create(self, validated_data):
         residence_zone_id = validated_data.pop('residence_zone_id', None)
         zone_ids = validated_data.pop('zone_ids', [])
+        nif_raw = validated_data.pop('nif', '') or ''
         profile_data = {
             'full_name': validated_data.pop('full_name'),
             'profession': validated_data.pop('profession'),
             'specialization': (validated_data.pop('specialization', '') or '').strip(),
+            'nif': nif_raw.strip()[:64],
             'experience_years': validated_data.pop('experience_years'),
         }
 
@@ -87,8 +122,8 @@ class RegisterAgentSerializer(serializers.Serializer):
             if residence_zone_id is not None:
                 try:
                     rz = ResidenceZone.objects.get(id=residence_zone_id)
-                    profile.residence_zone = rz
-                    profile.save(update_fields=['residence_zone'])
+                    profile.pending_residence_zone = rz
+                    profile.save(update_fields=['pending_residence_zone'])
                     if not coverage_ids:
                         coverage_ids = [residence_zone_id]
                     else:
@@ -97,7 +132,7 @@ class RegisterAgentSerializer(serializers.Serializer):
                     pass
             if coverage_ids:
                 zones = ResidenceZone.objects.filter(id__in=coverage_ids)
-                profile.coverage_zones.set(zones)
+                profile.pending_coverage_zones.set(zones)
         return user
 
 

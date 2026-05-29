@@ -1,5 +1,6 @@
 import random
 import string
+import logging
 from datetime import timedelta
 
 from django.conf import settings
@@ -22,6 +23,8 @@ from .serializers import (
     UserSerializer,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def _generate_otp():
     return ''.join(random.choices(string.digits, k=6))
@@ -40,8 +43,17 @@ def _send_otp_email(user, otp_code):
         message,
         settings.DEFAULT_FROM_EMAIL,
         [user.email],
-        fail_silently=True,
+        fail_silently=False,
     )
+
+
+def _send_otp_email_safe(user, otp_code):
+    try:
+        _send_otp_email(user, otp_code)
+        return True
+    except Exception:
+        logger.exception("OTP email failed for user_id=%s", user.id)
+        return False
 
 
 class RegisterPatientView(APIView):
@@ -57,9 +69,12 @@ class RegisterPatientView(APIView):
                 code=otp_code,
                 expires_at=timezone.now() + timedelta(minutes=10),
             )
-            _send_otp_email(user, otp_code)
+            email_sent = _send_otp_email_safe(user, otp_code)
+            message = 'Compte créé. Vérifiez votre email pour activer votre compte.'
+            if not email_sent:
+                message += " L'envoi de l'email OTP a échoué; utilisez 'Renvoyer le code'."
             return Response(
-                {'message': 'Compte créé. Vérifiez votre email pour activer votre compte.', 'user_id': user.id},
+                {'message': message, 'user_id': user.id},
                 status=status.HTTP_201_CREATED,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -102,10 +117,13 @@ class RegisterAgentView(APIView):
                 code=otp_code,
                 expires_at=timezone.now() + timedelta(minutes=10),
             )
-            _send_otp_email(user, otp_code)
+            email_sent = _send_otp_email_safe(user, otp_code)
+            message = 'Compte agent créé. Vérifiez votre email. Votre compte sera activé après validation.'
+            if not email_sent:
+                message += " L'envoi de l'email OTP a échoué; utilisez 'Renvoyer le code'."
             return Response(
                 {
-                    'message': 'Compte agent créé. Vérifiez votre email. Votre compte sera activé après validation.',
+                    'message': message,
                     'user_id': user.id,
                 },
                 status=status.HTTP_201_CREATED,
@@ -192,8 +210,13 @@ class ResendOTPView(APIView):
                 code=otp_code,
                 expires_at=timezone.now() + timedelta(minutes=10),
             )
-            _send_otp_email(user, otp_code)
-            return Response({'message': 'Nouveau code de vérification envoyé.'})
+            email_sent = _send_otp_email_safe(user, otp_code)
+            if email_sent:
+                return Response({'message': 'Nouveau code de vérification envoyé.'})
+            return Response(
+                {'message': "Code OTP régénéré, mais l'email n'a pas pu être envoyé."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         except User.DoesNotExist:
             return Response({'error': 'Utilisateur introuvable ou déjà vérifié.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -213,8 +236,13 @@ class PasswordResetRequestView(APIView):
                 code=otp_code,
                 expires_at=timezone.now() + timedelta(minutes=10),
             )
-            _send_otp_email(user, otp_code)
-            return Response({'message': 'Code de réinitialisation envoyé par email.', 'user_id': user.id})
+            email_sent = _send_otp_email_safe(user, otp_code)
+            if email_sent:
+                return Response({'message': 'Code de réinitialisation envoyé par email.', 'user_id': user.id})
+            return Response(
+                {'error': "Impossible d'envoyer l'email de réinitialisation pour le moment."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         except User.DoesNotExist:
             return Response({'error': 'Aucun compte associé à cet email.'}, status=status.HTTP_404_NOT_FOUND)
 
