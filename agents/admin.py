@@ -11,9 +11,9 @@ class ResidenceZoneAdmin(admin.ModelAdmin):
 
 @admin.register(AgentProfile)
 class AgentProfileAdmin(admin.ModelAdmin):
-    list_display = ['full_name', 'profession', 'specialization', 'nif', 'approval_status', 'is_available', 'created_at']
+    list_display = ['first_name', 'last_name', 'profession', 'specialization', 'nif', 'approval_status', 'is_available', 'created_at']
     list_filter = ['approval_status', 'is_available', 'profession']
-    search_fields = ['full_name', 'specialization', 'profession', 'nif']
+    search_fields = ['first_name', 'last_name', 'specialization', 'profession', 'nif']
     actions = ['approve_agents', 'reject_agents']
 
     @admin.action(description='Approuver les agents sélectionnés')

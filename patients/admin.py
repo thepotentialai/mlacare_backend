@@ -12,8 +12,8 @@ class PlanAdmin(admin.ModelAdmin):
 
 @admin.register(PatientProfile)
 class PatientProfileAdmin(admin.ModelAdmin):
-    list_display = ['full_name', 'city', 'zone', 'created_at']
-    search_fields = ['full_name', 'city']
+    list_display = ['first_name', 'last_name', 'city', 'zone', 'created_at']
+    search_fields = ['first_name', 'last_name', 'city']
     list_filter = ['gender', 'city']
 
 
@@ -21,4 +21,4 @@ class PatientProfileAdmin(admin.ModelAdmin):
 class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ['patient', 'plan', 'status', 'start_date', 'end_date']
     list_filter = ['status', 'plan']
-    search_fields = ['patient__full_name']
+    search_fields = ['patient__first_name', 'patient__last_name']

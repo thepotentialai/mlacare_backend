@@ -10,7 +10,8 @@ class RegisterPatientSerializer(serializers.Serializer):
     email = serializers.EmailField()
     phone = serializers.CharField(max_length=20)
     password = serializers.CharField(write_only=True, min_length=8)
-    full_name = serializers.CharField(max_length=200)
+    first_name = serializers.CharField(max_length=100)
+    last_name = serializers.CharField(max_length=100)
     date_of_birth = serializers.DateField(required=False, allow_null=True)
     gender = serializers.ChoiceField(choices=['male', 'female', 'other'], required=False, allow_blank=True)
     address = serializers.CharField(required=False, allow_blank=True)
@@ -31,7 +32,8 @@ class RegisterPatientSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         profile_data = {
-            'full_name': validated_data.pop('full_name'),
+            'first_name': validated_data.pop('first_name'),
+            'last_name': validated_data.pop('last_name'),
             'date_of_birth': validated_data.pop('date_of_birth', None),
             'gender': validated_data.pop('gender', ''),
             'address': validated_data.pop('address', ''),
@@ -79,7 +81,8 @@ class RegisterAgentSerializer(serializers.Serializer):
     email = serializers.EmailField()
     phone = serializers.CharField(max_length=20)
     password = serializers.CharField(write_only=True, min_length=8)
-    full_name = serializers.CharField(max_length=200)
+    first_name = serializers.CharField(max_length=100)
+    last_name = serializers.CharField(max_length=100)
     profession = serializers.ChoiceField(choices=AgentProfile.PROFESSION_CHOICES)
     specialization = serializers.CharField(max_length=200, required=False, allow_blank=True)
     nif = serializers.CharField(max_length=64, required=False, allow_blank=True)
@@ -103,7 +106,8 @@ class RegisterAgentSerializer(serializers.Serializer):
         zone_ids = validated_data.pop('zone_ids', [])
         nif_raw = validated_data.pop('nif', '') or ''
         profile_data = {
-            'full_name': validated_data.pop('full_name'),
+            'first_name': validated_data.pop('first_name'),
+            'last_name': validated_data.pop('last_name'),
             'profession': validated_data.pop('profession'),
             'specialization': (validated_data.pop('specialization', '') or '').strip(),
             'nif': nif_raw.strip()[:64],

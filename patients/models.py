@@ -1,5 +1,7 @@
 from django.db import models
 
+from common.name_utils import format_person_name
+
 from accounts.models import User
 
 
@@ -28,7 +30,8 @@ class PatientProfile(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='patient_profile')
-    full_name = models.CharField(max_length=200)
+    first_name = models.CharField(max_length=100, blank=True, default='')
+    last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField(null=True, blank=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True)
     avatar = models.ImageField(upload_to='patients/avatars/', null=True, blank=True)
@@ -59,7 +62,11 @@ class PatientProfile(models.Model):
         db_table = 'patient_profiles'
 
     def __str__(self):
-        return self.full_name
+        return self.display_name
+
+    @property
+    def display_name(self) -> str:
+        return format_person_name(self.first_name, self.last_name) or '—'
 
 
 class Subscription(models.Model):
@@ -81,4 +88,4 @@ class Subscription(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.patient.full_name} — {self.plan.name}"
+        return f"{self.patient.display_name} — {self.plan.name}"

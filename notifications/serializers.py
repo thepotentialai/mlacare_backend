@@ -13,7 +13,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class SOSAlertSerializer(serializers.ModelSerializer):
-    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    patient_name = serializers.CharField(source='patient.display_name', read_only=True)
 
     class Meta:
         model = SOSAlert

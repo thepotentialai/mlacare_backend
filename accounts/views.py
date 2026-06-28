@@ -85,11 +85,8 @@ class RegisterAgentView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
-        # Strip document fields from serializer payload; they are processed after account creation.
-        payload = request.data.copy()
-        if hasattr(payload, "setlist"):
-            payload.setlist('document_types', [])
-        payload.pop('document_files', None)
+        # Use POST only: request.data.copy() deep-copies file handles and raises TypeError.
+        payload = request.POST.copy()
         payload.pop('document_types', None)
 
         serializer = RegisterAgentSerializer(data=payload)

@@ -14,4 +14,4 @@ class NotificationAdmin(admin.ModelAdmin):
 class SOSAlertAdmin(admin.ModelAdmin):
     list_display = ['patient', 'is_resolved', 'created_at', 'resolved_at']
     list_filter = ['is_resolved']
-    search_fields = ['patient__full_name']
+    search_fields = ['patient__first_name', 'patient__last_name']

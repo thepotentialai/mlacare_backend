@@ -34,7 +34,7 @@ class PatientProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = PatientProfile
         fields = [
-            'id', 'email', 'phone', 'full_name', 'date_of_birth', 'gender', 'avatar',
+            'id', 'email', 'phone', 'first_name', 'last_name', 'date_of_birth', 'gender', 'avatar',
             'address', 'city', 'zone', 'zone_name',
             'emergency_contact_name', 'emergency_contact_phone',
             'health_notes',

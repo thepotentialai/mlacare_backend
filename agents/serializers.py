@@ -67,7 +67,7 @@ class AgentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = AgentProfile
         fields = [
-            'id', 'email', 'phone', 'full_name', 'bio', 'avatar',
+            'id', 'email', 'phone', 'first_name', 'last_name', 'bio', 'avatar',
             'profession', 'profession_label', 'specialization', 'nif', 'experience_years',
             'approval_status', 'approval_status_label', 'is_available',
             'residence_zone', 'residence_zone_id',

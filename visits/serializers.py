@@ -104,7 +104,7 @@ class VisitReviewSerializer(serializers.ModelSerializer):
 
 
 class VisitSerializer(serializers.ModelSerializer):
-    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    patient_name = serializers.CharField(source='patient.display_name', read_only=True)
     patient_health_notes = serializers.CharField(source='patient.health_notes', read_only=True)
     agent_name = serializers.SerializerMethodField()
     agent_phone = serializers.SerializerMethodField()
@@ -131,7 +131,7 @@ class VisitSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'patient', 'subscription', 'visit_number', 'completed_at', 'rescheduled_from', 'created_at', 'updated_at']
 
     def get_agent_name(self, obj):
-        return obj.agent.full_name if obj.agent else None
+        return obj.agent.display_name if obj.agent else None
 
     def get_agent_phone(self, obj):
         if not obj.agent:
@@ -165,7 +165,7 @@ class VisitSerializer(serializers.ModelSerializer):
 
 class HealthReportSerializer(serializers.ModelSerializer):
     attachments = ReportAttachmentSerializer(many=True, read_only=True)
-    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    patient_name = serializers.CharField(source='patient.display_name', read_only=True)
 
     class Meta:
         model = HealthReport

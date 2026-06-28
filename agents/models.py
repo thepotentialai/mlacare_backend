@@ -1,5 +1,7 @@
 from django.db import models
 
+from common.name_utils import format_person_name
+
 from accounts.models import User
 
 
@@ -52,7 +54,8 @@ class AgentProfile(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='agent_profile')
-    full_name = models.CharField(max_length=200)
+    first_name = models.CharField(max_length=100, blank=True, default='')
+    last_name = models.CharField(max_length=100)
     bio = models.TextField(blank=True)
     avatar = models.ImageField(upload_to='agents/avatars/', null=True, blank=True)
     profession = models.CharField(max_length=40, choices=PROFESSION_CHOICES, default='other')
@@ -102,7 +105,11 @@ class AgentProfile(models.Model):
         db_table = 'agent_profiles'
 
     def __str__(self):
-        return self.full_name
+        return self.display_name
+
+    @property
+    def display_name(self) -> str:
+        return format_person_name(self.first_name, self.last_name) or '—'
 
 
 class AgentDocument(models.Model):
@@ -122,7 +129,7 @@ class AgentDocument(models.Model):
         db_table = 'agent_documents'
 
     def __str__(self):
-        return f"{self.agent.full_name} — {self.get_document_type_display()}"
+        return f"{self.agent.display_name} — {self.get_document_type_display()}"
 
 
 class AgentSchedule(models.Model):
@@ -146,4 +153,4 @@ class AgentSchedule(models.Model):
         unique_together = ('agent', 'day_of_week')
 
     def __str__(self):
-        return f"{self.agent.full_name} — {self.get_day_of_week_display()}"
+        return f"{self.agent.display_name} — {self.get_day_of_week_display()}"

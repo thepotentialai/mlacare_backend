@@ -7,7 +7,7 @@ from .models import DonationTransaction, Payment, PaygateDonationStatus
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ['id', 'subscription', 'amount', 'payment_method', 'status', 'paid_at', 'created_at']
     list_filter = ['status', 'payment_method']
-    search_fields = ['subscription__patient__full_name', 'transaction_id']
+    search_fields = ['subscription__patient__first_name', 'subscription__patient__last_name', 'transaction_id']
     date_hierarchy = 'created_at'
 
 

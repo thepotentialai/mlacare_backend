@@ -41,4 +41,4 @@ class SOSAlert(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"SOS — {self.patient.full_name} ({'résolu' if self.is_resolved else 'actif'})"
+        return f"SOS — {self.patient.display_name} ({'résolu' if self.is_resolved else 'actif'})"

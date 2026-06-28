@@ -19,7 +19,7 @@ class VisitAssignmentJITTests(TestCase):
         user = self._create_user(f"agent{suffix}@test.com", "agent")
         agent = AgentProfile.objects.create(
             user=user,
-            full_name=f"Agent {suffix}",
+            last_name=f"Agent {suffix}",
             approval_status="approved",
             is_available=is_available,
         )
@@ -31,7 +31,7 @@ class VisitAssignmentJITTests(TestCase):
         user = self._create_user(f"patient{suffix}@test.com", "patient")
         return PatientProfile.objects.create(
             user=user,
-            full_name=f"Patient {suffix}",
+            last_name=f"Patient {suffix}",
             city="Douala",
             address="Rue 1",
             zone=zone,

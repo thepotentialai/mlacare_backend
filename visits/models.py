@@ -38,7 +38,7 @@ class Visit(models.Model):
         ordering = ['-scheduled_date', '-scheduled_time']
 
     def __str__(self):
-        return f"Visite #{self.id} — {self.patient.full_name} ({self.status})"
+        return f"Visite #{self.id} — {self.patient.display_name} ({self.status})"
 
 
 class VisitPreScreening(models.Model):

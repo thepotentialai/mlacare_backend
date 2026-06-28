@@ -62,7 +62,7 @@ class AdminAgentListView(generics.ListAPIView):
         'documents',
     ).order_by('-created_at')
     filterset_fields = ['approval_status', 'is_available']
-    search_fields = ['full_name', 'specialization', 'profession']
+    search_fields = ['first_name', 'last_name', 'specialization', 'profession']
 
 
 class AdminAgentDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -90,7 +90,7 @@ class AdminApproveAgentView(APIView):
                 agent.approval_status = 'approved'
                 agent.save(update_fields=['approval_status', 'updated_at'])
                 apply_pending_zones_to_approved(agent)
-            return Response({'message': f"Agent '{agent.full_name}' approuvé avec succès."})
+            return Response({'message': f"Agent '{agent.display_name}' approuvé avec succès."})
         except AgentProfile.DoesNotExist:
             return Response({'error': 'Agent introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -105,7 +105,7 @@ class AdminRejectAgentView(APIView):
                 agent.approval_status = 'rejected'
                 agent.save(update_fields=['approval_status', 'updated_at'])
                 clear_pending_zones(agent)
-            return Response({'message': f"Agent '{agent.full_name}' rejeté."})
+            return Response({'message': f"Agent '{agent.display_name}' rejeté."})
         except AgentProfile.DoesNotExist:
             return Response({'error': 'Agent introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -135,7 +135,7 @@ class AdminApproveAgentZonesView(APIView):
             )
         apply_pending_zones_to_approved(agent)
         return Response(
-            {'message': f"Zones de « {agent.full_name} » validées et appliquées."},
+            {'message': f"Zones de « {agent.display_name} » validées et appliquées."},
             status=status.HTTP_200_OK,
         )
 
@@ -158,7 +158,7 @@ class AdminRejectAgentZonesView(APIView):
             )
         clear_pending_zones(agent)
         return Response(
-            {'message': f"Demande de zones refusée pour « {agent.full_name} »."},
+            {'message': f"Demande de zones refusée pour « {agent.display_name} »."},
             status=status.HTTP_200_OK,
         )
 
@@ -216,7 +216,7 @@ class AdminReviewAgentZonesView(APIView):
             approved_coverage_zone_ids=approved_cov_ids,
         )
         return Response(
-            {'message': f"Sélection des zones appliquée pour « {agent.full_name} »."},
+            {'message': f"Sélection des zones appliquée pour « {agent.display_name} »."},
             status=status.HTTP_200_OK,
         )
 
@@ -225,7 +225,7 @@ class AdminPatientListView(generics.ListAPIView):
     serializer_class = PatientProfileSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
     queryset = PatientProfile.objects.select_related('user', 'zone').order_by('-created_at')
-    search_fields = ['full_name', 'city']
+    search_fields = ['first_name', 'last_name', 'city']
     filterset_fields = ['gender', 'city']
 
 
@@ -242,7 +242,7 @@ class AdminVisitListView(generics.ListAPIView):
         '-created_at'
     )
     filterset_fields = ['status']
-    search_fields = ['patient__full_name', 'agent__full_name']
+    search_fields = ['patient__first_name', 'patient__last_name', 'agent__first_name', 'agent__last_name']
 
 
 class AdminVisitDetailView(generics.RetrieveUpdateAPIView):

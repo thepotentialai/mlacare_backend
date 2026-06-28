@@ -7,7 +7,7 @@ from .models import HealthReport, ReportAttachment, Visit, VitalSigns
 class VisitAdmin(admin.ModelAdmin):
     list_display = ['id', 'patient', 'agent', 'scheduled_date', 'scheduled_time', 'status']
     list_filter = ['status', 'scheduled_date']
-    search_fields = ['patient__full_name', 'agent__full_name']
+    search_fields = ['patient__first_name', 'patient__last_name', 'agent__first_name', 'agent__last_name']
     date_hierarchy = 'scheduled_date'
 
 
@@ -20,7 +20,7 @@ class VitalSignsAdmin(admin.ModelAdmin):
 @admin.register(HealthReport)
 class HealthReportAdmin(admin.ModelAdmin):
     list_display = ['title', 'patient', 'visit', 'created_at']
-    search_fields = ['title', 'patient__full_name']
+    search_fields = ['title', 'patient__first_name', 'patient__last_name']
 
 
 @admin.register(ReportAttachment)
