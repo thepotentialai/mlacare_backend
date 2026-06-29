@@ -21,6 +21,7 @@ class AgentProfile(models.Model):
     APPROVAL_CHOICES = [
         ('pending', 'En attente'),
         ('approved', 'Approuvé'),
+        ('revision_required', 'Corrections demandées'),
         ('rejected', 'Rejeté'),
     ]
 
@@ -68,6 +69,20 @@ class AgentProfile(models.Model):
     )
     experience_years = models.IntegerField(default=0)
     approval_status = models.CharField(max_length=20, choices=APPROVAL_CHOICES, default='pending')
+    rejection_reason = models.TextField(blank=True, default='')
+    revision_notes = models.TextField(
+        blank=True,
+        default='',
+        help_text="Réponse textuelle de l'agent aux demandes de l'administrateur.",
+    )
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    rejected_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='agent_rejections',
+    )
     is_available = models.BooleanField(default=False)
     residence_zone = models.ForeignKey(
         ResidenceZone,

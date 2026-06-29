@@ -39,8 +39,10 @@ class AgentDocumentSerializer(serializers.ModelSerializer):
 class AgentProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     phone = serializers.CharField(source='user.phone', read_only=True)
+    phone_update = serializers.CharField(required=False, allow_blank=True, write_only=True)
     schedules = AgentScheduleSerializer(many=True, read_only=True)
     approval_status_label = serializers.CharField(source='get_approval_status_display', read_only=True)
+    rejected_by_email = serializers.EmailField(source='rejected_by.email', read_only=True)
     profession_label = serializers.CharField(source='get_profession_display', read_only=True)
     residence_zone = ResidenceZoneSerializer(read_only=True)
     coverage_zones = ResidenceZoneSerializer(many=True, read_only=True)
@@ -67,9 +69,10 @@ class AgentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = AgentProfile
         fields = [
-            'id', 'email', 'phone', 'first_name', 'last_name', 'bio', 'avatar',
+            'id', 'email', 'phone', 'phone_update', 'first_name', 'last_name', 'bio', 'avatar',
             'profession', 'profession_label', 'specialization', 'nif', 'experience_years',
             'approval_status', 'approval_status_label', 'is_available',
+            'rejection_reason', 'revision_notes', 'rejected_at', 'rejected_by_email',
             'residence_zone', 'residence_zone_id',
             'coverage_zones', 'coverage_zone_ids',
             'pending_residence_zone', 'pending_coverage_zones', 'zones_pending_review',
@@ -77,7 +80,10 @@ class AgentProfileSerializer(serializers.ModelSerializer):
             'average_rating', 'total_reviews',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'email', 'phone', 'approval_status', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'email', 'phone', 'approval_status', 'rejection_reason',
+            'rejected_at', 'rejected_by_email', 'created_at', 'updated_at',
+        ]
 
     def get_zones_pending_review(self, obj):
         return obj.pending_residence_zone_id is not None or obj.pending_coverage_zones.exists()
@@ -104,6 +110,7 @@ class AgentProfileSerializer(serializers.ModelSerializer):
         )
         coverage = validated_data.pop('coverage_zone_ids', None)
         residence = validated_data.pop('residence_zone', serializers.empty)
+        phone_update = validated_data.pop('phone_update', serializers.empty)
 
         if is_admin:
             instance = super().update(instance, validated_data)
@@ -112,7 +119,18 @@ class AgentProfileSerializer(serializers.ModelSerializer):
                 instance.save(update_fields=['residence_zone', 'updated_at'])
             if coverage is not None:
                 instance.coverage_zones.set(coverage)
+            if phone_update is not serializers.empty:
+                instance.user.phone = phone_update.strip()
+                instance.user.save(update_fields=['phone'])
             return instance
+
+        if phone_update is not serializers.empty:
+            if instance.approval_status != 'revision_required':
+                raise serializers.ValidationError(
+                    {'phone_update': 'La mise à jour du téléphone n\'est pas autorisée dans votre état actuel.'},
+                )
+            instance.user.phone = phone_update.strip()
+            instance.user.save(update_fields=['phone'])
 
         instance = super().update(instance, validated_data)
 

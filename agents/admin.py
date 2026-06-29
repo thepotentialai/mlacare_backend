@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .approval import approve_agent
 from .models import AgentDocument, AgentProfile, AgentSchedule, ResidenceZone
 
 
@@ -14,15 +15,13 @@ class AgentProfileAdmin(admin.ModelAdmin):
     list_display = ['first_name', 'last_name', 'profession', 'specialization', 'nif', 'approval_status', 'is_available', 'created_at']
     list_filter = ['approval_status', 'is_available', 'profession']
     search_fields = ['first_name', 'last_name', 'specialization', 'profession', 'nif']
-    actions = ['approve_agents', 'reject_agents']
+    actions = ['approve_agents']
 
     @admin.action(description='Approuver les agents sélectionnés')
     def approve_agents(self, request, queryset):
-        queryset.update(approval_status='approved')
-
-    @admin.action(description='Rejeter les agents sélectionnés')
-    def reject_agents(self, request, queryset):
-        queryset.update(approval_status='rejected')
+        for agent in queryset:
+            if agent.approval_status in ('pending', 'rejected'):
+                approve_agent(agent, by_user=request.user)
 
 
 @admin.register(AgentDocument)

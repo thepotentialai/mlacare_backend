@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.permissions import IsAgent, IsPatient
+from accounts.permissions import IsApprovedAgent, IsApprovedAgentIfAgent, IsPatient
 
 from .models import HealthReport, ReportAttachment, Visit, VisitPreScreening, VitalSigns, VisitReview
 from .serializers import (
@@ -22,7 +22,7 @@ from .serializers import (
 
 class VisitListCreateView(generics.ListCreateAPIView):
     serializer_class = VisitSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsApprovedAgentIfAgent]
 
     def get_queryset(self):
         user = self.request.user
@@ -73,7 +73,7 @@ REQUIRED_VITAL_FIELDS = {
 
 class VisitDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = VisitSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsApprovedAgentIfAgent]
 
     def get_queryset(self):
         user = self.request.user
@@ -238,7 +238,7 @@ class VisitDetailView(generics.RetrieveUpdateAPIView):
 
 
 class VitalSignsView(APIView):
-    permission_classes = [IsAuthenticated, IsAgent]
+    permission_classes = [IsAuthenticated, IsApprovedAgent]
 
     def get(self, request, visit_id):
         try:
@@ -300,7 +300,7 @@ def _visit_for_pre_screening_read(user, visit_id):
 
 
 class VisitPreScreeningView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsApprovedAgentIfAgent]
 
     def get(self, request, visit_id):
         visit = _visit_for_pre_screening_read(request.user, visit_id)
@@ -437,7 +437,7 @@ class PlanProgressView(APIView):
     - admin   : progression globale de tous les patients.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsApprovedAgentIfAgent]
 
     def get(self, request):
         user = request.user

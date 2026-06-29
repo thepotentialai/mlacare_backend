@@ -43,6 +43,8 @@ db.sqlite3
 db.sqlite3-journal
 media/
 staticfiles/
+fixtures/*.json
+!fixtures/.gitkeep
 
 # IDE / editors
 .idea/

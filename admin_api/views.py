@@ -1,11 +1,12 @@
 from django.db.models import Count, Q, Sum
-from django.db import transaction
 from rest_framework import generics, serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import IsAdmin
+from agents.approval import approve_agent, reject_agent
+from agents.emails import REJECTION_TYPE_DEFINITIVE, REJECTION_TYPE_REVISION
 from agents.models import AgentProfile, ResidenceZone
 from agents.serializers import AgentProfileSerializer, ResidenceZoneSerializer
 from agents.zone_approval import (
@@ -29,6 +30,9 @@ class AdminDashboardView(APIView):
             'total_patients': PatientProfile.objects.count(),
             'total_agents': AgentProfile.objects.count(),
             'pending_agents': AgentProfile.objects.filter(approval_status='pending').count(),
+            'revision_required_agents': AgentProfile.objects.filter(
+                approval_status='revision_required'
+            ).count(),
             'approved_agents': AgentProfile.objects.filter(approval_status='approved').count(),
             'rejected_agents': AgentProfile.objects.filter(approval_status='rejected').count(),
             'total_visits': Visit.objects.count(),
@@ -54,7 +58,7 @@ class AdminAgentListView(generics.ListAPIView):
     serializer_class = AgentProfileSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
     queryset = AgentProfile.objects.select_related(
-        'user', 'residence_zone', 'pending_residence_zone'
+        'user', 'residence_zone', 'pending_residence_zone', 'rejected_by'
     ).prefetch_related(
         'schedules',
         'coverage_zones',
@@ -69,7 +73,7 @@ class AdminAgentDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AgentProfileSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
     queryset = AgentProfile.objects.select_related(
-        'user', 'residence_zone', 'pending_residence_zone'
+        'user', 'residence_zone', 'pending_residence_zone', 'rejected_by'
     ).prefetch_related(
         'schedules',
         'coverage_zones',
@@ -86,13 +90,30 @@ class AdminApproveAgentView(APIView):
             agent = AgentProfile.objects.select_related('pending_residence_zone').prefetch_related(
                 'pending_coverage_zones'
             ).get(pk=pk)
-            with transaction.atomic():
-                agent.approval_status = 'approved'
-                agent.save(update_fields=['approval_status', 'updated_at'])
-                apply_pending_zones_to_approved(agent)
-            return Response({'message': f"Agent '{agent.display_name}' approuvé avec succès."})
         except AgentProfile.DoesNotExist:
             return Response({'error': 'Agent introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if agent.approval_status == 'approved':
+            return Response(
+                {'error': 'Cet agent est déjà approuvé.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if agent.approval_status not in ('pending', 'rejected', 'revision_required'):
+            return Response(
+                {'error': "Cet agent ne peut pas être approuvé dans son état actuel."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        approve_agent(agent, by_user=request.user)
+        return Response({'message': f"Agent '{agent.display_name}' approuvé avec succès."})
+
+
+class AdminRejectAgentInputSerializer(serializers.Serializer):
+    reason = serializers.CharField(min_length=10, max_length=2000, trim_whitespace=True)
+    rejection_type = serializers.ChoiceField(
+        choices=[REJECTION_TYPE_REVISION, REJECTION_TYPE_DEFINITIVE],
+        default=REJECTION_TYPE_DEFINITIVE,
+    )
 
 
 class AdminRejectAgentView(APIView):
@@ -101,13 +122,39 @@ class AdminRejectAgentView(APIView):
     def post(self, request, pk):
         try:
             agent = AgentProfile.objects.get(pk=pk)
-            with transaction.atomic():
-                agent.approval_status = 'rejected'
-                agent.save(update_fields=['approval_status', 'updated_at'])
-                clear_pending_zones(agent)
-            return Response({'message': f"Agent '{agent.display_name}' rejeté."})
         except AgentProfile.DoesNotExist:
             return Response({'error': 'Agent introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if agent.approval_status in ('rejected', 'revision_required'):
+            return Response(
+                {'error': 'Cet agent a déjà reçu une décision de rejet.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if agent.approval_status != 'pending':
+            return Response(
+                {'error': "Seuls les agents en attente peuvent être rejetés."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        input_serializer = AdminRejectAgentInputSerializer(data=request.data)
+        if not input_serializer.is_valid():
+            return Response(input_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = input_serializer.validated_data
+        reject_agent(
+            agent,
+            by_user=request.user,
+            reason=data['reason'],
+            rejection_type=data['rejection_type'],
+        )
+        if data['rejection_type'] == REJECTION_TYPE_REVISION:
+            message = (
+                f"Corrections demandées pour « {agent.display_name} ». "
+                f"L'agent peut mettre à jour son dossier et resoumettre."
+            )
+        else:
+            message = f"Agent « {agent.display_name} » rejeté définitivement."
+        return Response({'message': message})
 
 
 class AdminApproveAgentZonesView(APIView):

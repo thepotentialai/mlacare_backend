@@ -47,12 +47,38 @@ def _send_otp_email(user, otp_code):
     )
 
 
+def _send_password_reset_email(user, otp_code):
+    subject = 'Réinitialisation de votre mot de passe MLACare'
+    message = (
+        f"Bonjour,\n\n"
+        f"Votre code de réinitialisation MLACare est : {otp_code}\n"
+        f"Ce code est valable 10 minutes.\n\n"
+        f"Si vous n'avez pas demandé cette réinitialisation, ignorez ce message."
+    )
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+        fail_silently=False,
+    )
+
+
 def _send_otp_email_safe(user, otp_code):
     try:
         _send_otp_email(user, otp_code)
         return True
     except Exception:
         logger.exception("OTP email failed for user_id=%s", user.id)
+        return False
+
+
+def _send_password_reset_email_safe(user, otp_code):
+    try:
+        _send_password_reset_email(user, otp_code)
+        return True
+    except Exception:
+        logger.exception("Password reset email failed for user_id=%s", user.id)
         return False
 
 
@@ -223,17 +249,24 @@ class PasswordResetRequestView(APIView):
 
     def post(self, request):
         email = request.data.get('email')
+        role = request.data.get('role')
         if not email:
             return Response({'error': "L'email est requis."}, status=status.HTTP_400_BAD_REQUEST)
+        if role and role not in ('patient', 'agent'):
+            return Response({'error': 'Rôle invalide.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             user = User.objects.get(email=email)
+            if role and user.role != role:
+                return Response({'error': 'Aucun compte associé à cet email.'}, status=status.HTTP_404_NOT_FOUND)
+            if user.role not in ('patient', 'agent'):
+                return Response({'error': 'Aucun compte associé à cet email.'}, status=status.HTTP_404_NOT_FOUND)
             otp_code = _generate_otp()
             OTPVerification.objects.create(
                 user=user,
                 code=otp_code,
                 expires_at=timezone.now() + timedelta(minutes=10),
             )
-            email_sent = _send_otp_email_safe(user, otp_code)
+            email_sent = _send_password_reset_email_safe(user, otp_code)
             if email_sent:
                 return Response({'message': 'Code de réinitialisation envoyé par email.', 'user_id': user.id})
             return Response(
